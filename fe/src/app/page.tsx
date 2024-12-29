@@ -1,6 +1,6 @@
 "use client";
 
-import { UseUserContext } from "@/context/userContext";
+import { useUserContext } from "@/context/userContext";
 import { axiosClient } from "@/lib/axiosClient";
 import { useState } from "react";
 import Chat from "./Chat";
@@ -19,7 +19,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [isLoginOrRegister, setIsLoginOrRegister] = useState<'login' | 'register'>('login');
   const [isLoading, setIsLoading] = useState(false);  // New state for loading
-  const { setUsername: setLoggedInUsername, setId, id } = UseUserContext();
+  const { setUsername: setLoggedInUsername, setId, id } = useUserContext();
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
