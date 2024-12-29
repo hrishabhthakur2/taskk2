@@ -11,5 +11,6 @@ import { Message } from './message.entity';
     TypeOrmModule.forFeature([Message]),
   ],
   providers: [EventsGateway],
+  exports: [TypeOrmModule, EventsGateway], // Export TypeOrmModule and Gateway
 })
 export class EventsModule {}

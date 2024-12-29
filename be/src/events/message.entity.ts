@@ -1,3 +1,4 @@
+import { ObjectType, Field, Int } from '@nestjs/graphql';
 import { User } from 'src/auth/auth.entity';
 import {
   BaseEntity,
@@ -10,28 +11,40 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+@ObjectType()
 @Entity()
 export class Message extends BaseEntity {
+  @Field(() => Int)
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => User, { eager: true }) // Gantilah dengan path yang sesuai
+  @Field(() => User)
+  @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'senderId' })
   sender: User;
 
-  @ManyToOne(() => User, { eager: true }) // Gantilah dengan path yang sesuai
+  @Field(() => User)
+  @ManyToOne(() => User, { eager: true })
   @JoinColumn({ name: 'recipientId' })
   recipient: User;
 
+  @Field()
   @Column()
   text: string;
 
+  @Field()
+  @Column()
+  text1: string;
+
+  @Field({ nullable: true })
   @Column({ nullable: true })
   file: string;
 
+  @Field()
   @CreateDateColumn({ type: 'timestamp' })
   createdAt: Date;
 
+  @Field()
   @UpdateDateColumn({ type: 'timestamp' })
   updatedAt: Date;
 }

@@ -9,111 +9,109 @@ import BaseResponse from 'src/utils/response/base.response';
 import { JwtService } from '@nestjs/jwt';
 import { jwtPayload } from './auth.interface';
 import { ConfigService } from '@nestjs/config';
-// import { jwt_config } from 'src/config/jwt.config';
 
 @Injectable()
 export class AuthService extends BaseResponse {
   constructor(
-    @InjectRepository(User) private authRepo: Repository<User>,
-    private jwtService: JwtService,
-    private configService: ConfigService,
+    @InjectRepository(User) private readonly authRepo: Repository<User>,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
     super();
   }
 
-  async register(payload: RegisterDto, clbk: any): Promise<ResponseSuccess> {
-    const checkUserExists = await this.authRepo.findOne({
-      where: {
-        username: payload.username,
-      },
+  // Method to find user by ID
+  async findById(id: number): Promise<User> {
+    const user = await this.authRepo.findOne({
+      where: { id },
+      relations: ['sentMessages', 'receivedMessages'],
+    });
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+  // Method to retrieve all users
+  async findAll(): Promise<User[]> {
+    return this.authRepo.find({
+      relations: ['sentMessages', 'receivedMessages'],
+    });
+  }
+
+  // User registration method
+  async register(payload: RegisterDto, clbk: (token: string) => void): Promise<ResponseSuccess> {
+    const userExists = await this.authRepo.findOne({
+      where: { username: payload.username },
     });
 
-    if (checkUserExists) {
-      throw new HttpException('Username sudah digunakan', HttpStatus.FOUND);
+    if (userExists) {
+      throw new HttpException('Username already in use', HttpStatus.CONFLICT);
     }
 
-    payload.password = await hash(payload.password, 12); //hash password
+    payload.password = await hash(payload.password, 12);
 
-    const userCreated = await this.authRepo.save(payload);
+    const newUser = await this.authRepo.save(payload);
     const jwtPayload: jwtPayload = {
-      id: userCreated.id,
-      username: userCreated.username,
+      id: newUser.id,
+      username: newUser.username,
     };
 
     const token = this.generateJWT(
       jwtPayload,
       '1d',
-      this.configService.get('JWT_SECRET'),
+      this.configService.get<string>('JWT_SECRET'),
     );
+
     clbk(token);
-
-    return this._success('Register Berhasil', jwtPayload);
+    return this._success('Registration successful', jwtPayload);
   }
 
-  async login(payload: LoginDto, clbk: any): Promise<ResponseSuccess> {
-    const checkUserExists = await this.authRepo.findOne({
-      where: {
-        username: payload.username,
-      },
-      select: {
-        id: true,
-        username: true,
-        password: true,
-      },
+  // User login method
+  async login(payload: LoginDto, clbk: (token: string) => void): Promise<ResponseSuccess> {
+    const user = await this.authRepo.findOne({
+      where: { username: payload.username },
+      select: ['id', 'username', 'password'],
     });
 
-    if (!checkUserExists) {
-      throw new HttpException(
-        'User tidak ditemukan',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+    if (!user) {
+      throw new HttpException('User not found', HttpStatus.UNPROCESSABLE_ENTITY);
     }
 
-    const checkPassword = await compare(
-      payload.password,
-      checkUserExists.password,
-    ); // compare password yang dikirim dengan password yang ada di tabel
-
-    if (checkPassword) {
-      const jwtPayload: jwtPayload = {
-        id: checkUserExists.id,
-        username: checkUserExists.username,
-      };
-
-      const token = this.generateJWT(
-        jwtPayload,
-        '1d',
-        this.configService.get('JWT_SECRET'),
-      );
-      clbk(token);
-
-      return this._success('Login Success', checkUserExists);
-    } else {
-      throw new HttpException(
-        'username dan password tidak sama',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+    const isPasswordValid = await compare(payload.password, user.password);
+    if (!isPasswordValid) {
+      throw new HttpException('Invalid username or password', HttpStatus.UNPROCESSABLE_ENTITY);
     }
+
+    const jwtPayload: jwtPayload = {
+      id: user.id,
+      username: user.username,
+    };
+
+    const token = this.generateJWT(
+      jwtPayload,
+      '1d',
+      this.configService.get<string>('JWT_SECRET'),
+    );
+
+    clbk(token);
+    return this._success('Login successful', user);
   }
 
-  async profile(token: string) {
+  // Method to retrieve user profile based on JWT
+  async profile(token: string): Promise<ResponseSuccess> {
     try {
-      const user = this.jwtService.verify(token, {
-        secret: this.configService.get('JWT_SECRET'),
+      const user = this.jwtService.verify<jwtPayload>(token, {
+        secret: this.configService.get<string>('JWT_SECRET'),
       });
-
-      return this._success('Berhasil Verify', user);
+      return this._success('Token verified successfully', user);
     } catch (error) {
-      return {
-        status: 'error',
-      };
+      throw new HttpException('Invalid token', HttpStatus.UNAUTHORIZED);
     }
   }
 
-  generateJWT(payload: jwtPayload, expiresIn: string | number, token: string) {
-    return this.jwtService.sign(payload, {
-      secret: token,
-      expiresIn: expiresIn,
-    });
+  // Utility method to generate JWT
+  private generateJWT(payload: jwtPayload, expiresIn: string | number, secret: string): string {
+    return this.jwtService.sign(payload, { secret, expiresIn });
   }
 }

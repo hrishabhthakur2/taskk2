@@ -5,6 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './auth.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { jwtConfigAsync } from 'src/config/jwt.config';
+import { AuthResolver } from './auth.resolver';
 
 @Module({
   imports: [
@@ -12,6 +13,6 @@ import { jwtConfigAsync } from 'src/config/jwt.config';
     JwtModule.registerAsync(jwtConfigAsync),
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, AuthResolver],
 })
 export class AuthModule {}

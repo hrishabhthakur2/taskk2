@@ -1,8 +1,10 @@
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Message } from 'src/events/message.entity';
 import {
   TypeOrmModuleAsyncOptions,
   TypeOrmModuleOptions,
 } from '@nestjs/typeorm';
+import { User } from 'src/auth/auth.entity';
 
 export default class TypeOrmConfig {
   static getOrmConfig(configService: ConfigService): TypeOrmModuleOptions {
@@ -13,8 +15,8 @@ export default class TypeOrmConfig {
       username: configService.get('DB_USERNAME'),
       password: configService.get('DB_PASSWORD'),
       database: configService.get('DB_DATABASE'),
-      entities: [__dirname + configService.get('DB_ENTITIES')],
-      synchronize: configService.get('DB_SYNCHRONIZE'),
+      entities: [User, Message],
+      synchronize: true,
     };
   }
 }
